@@ -64,10 +64,11 @@ class FC(MyLayers):
     def __init__(self, inputs, out_dims, activation_fn, dtype=tf.float32):
 
         shape_inputs = inputs.get_shape().as_list()
-        assert len(shape_inputs) == 2
+        assert len(shape_inputs) == 2 # [None, in_dims]
 
         self._in_dims = shape_inputs[1]
         self._out_dims = out_dims # TODO: [None, n_out]?
+
         shape_W = [self._in_dims,self._out_dims]
         shape_b = [1,out_dims]
 
@@ -80,3 +81,7 @@ class FC(MyLayers):
         else:
             self._out_activation = activation_fn(self._pre_activation)
 
+class Conv2d(MyLayers):
+
+    def __init__(self, inputs, n_filters, activation_fn, dtype=tf.float32):
+        

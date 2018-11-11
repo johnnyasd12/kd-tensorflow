@@ -55,65 +55,6 @@ class BasicNN(object):
         # param collection
         self.pc = None
         
-        
-    def weight_fc(self, shape, stddev=0.1, initial=None):
-        if initial is None:
-            initial = tf.truncated_normal(shape,stddev=stddev,dtype=self.dtype_X)
-            initial = tf.Variable(initial)
-            # initial = tf.Variable(tf.random_normal(shape), dtype=self.dtype_X)
-        return initial
-
-    def bias_fc(self, shape, init_bias=0.1, initial=None):
-        if initial is None:
-            initial = tf.constant(init_bias,shape=shape,dtype=self.dtype_X)
-            initial = tf.Variable(initial)
-            # initial = tf.Variable(tf.zeros(shape) + 0.1, dtype=self.dtype_X)
-        return initial
-    
-    def add_fc(
-        self
-#         , inputs
-#         , in_dims
-        , out_dims, activation_fn=None
-        # , output_layer=False
-        , initial=None):
-        
-#         Weights = tf.Variable(tf.random_normal([in_dims,out_dims]))
-#         biases = tf.Variable(tf.zeros([1,out_dims]) + 0.1)
-        inputs = self.h[-1] # last layer output as input
-        shape_inputs = inputs.get_shape().as_list()
-        self.L = self.L + 1
-
-        # ====================== below differs between layers ==============
-        print('Layer',self.L,': FC, input shape =',shape_inputs,', out_dims =',out_dims)
-        in_dims = shape_inputs[1]#self.session.run(tf.shape(inputs))[1] # TODO: get input shape = [1,out_dims]
-        shape_W = [in_dims,out_dims]
-        shape_b = [1,out_dims]
-#         print('FC_layer, shape_W =',shape_W,', shape_b =',shape_b)
-        
-        Weights = self.weight_fc(shape_W)
-        biases = self.bias_fc(shape_b)
-        pre_activation = tf.matmul(inputs, Weights) + biases
-        if activation_fn is None:
-            out = pre_activation
-        else:
-            out = activation_fn(pre_activation)
-        # ======================= above differs between layers ================
-
-        self.topology.append(out_dims)
-        self.activations.append(activation_fn)
-        self.layer_funcs.append(self.add_fc)
-        self.W.append(Weights)
-        self.b.append(biases)
-        self.h.append(out)
-        # if output_layer:
-        self.logits = pre_activation
-        self.prediction = self.h[-1]
-        
-        # for ParamCollection
-        self.params.append(self.W[-1])
-        self.params.append(self.b[-1])
-#         self.pc = ParamCollection(self.session, params) # TODO: watch this
 
     def add_layer(self, layer_obj, initial=None):
         
