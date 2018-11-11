@@ -11,14 +11,12 @@ from utils import *
 
 class BasicNN(object):
 
-    def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None):
-#         input_dims = topology[0] # TODO: after modified into function
-        # Layers in network.
-#         L = len(topology) - 1
-        
-        #         self.L = L # n_layers except input layer
-#         self.topology = topology
-#         self.layers_func = layers_func # TODO: want to modify to FUNCTION
+    def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs'):
+
+        # settings
+        self.ckpt_dir = ckpt_dir
+        self.ckpt_file = ckpt_file
+        # saved parameters
         self.L = 0 # n_layers except input layer
         self.topology = [input_dims] # output dims of each layer
         self.activations = []
@@ -32,8 +30,8 @@ class BasicNN(object):
         self.dtype_y = dtype_y
         # TODO: loop input_dims for initializing shape
         with tf.name_scope('inputs'):
-            self.Xs = tf.placeholder(dtype_X,shape=[None, input_dims]) # output of input layer
-            self.ys = tf.placeholder(dtype_y,shape=[None, output_dims])
+            self.Xs = tf.placeholder(dtype_X, shape=[None, input_dims], name='X_input') # output of input layer
+            self.ys = tf.placeholder(dtype_y, shape=[None, output_dims], name='y_input')
         # below are Tensor
         self.W = [] # weights in each layer
         self.b =[] # biases in each layer
@@ -82,6 +80,8 @@ class BasicNN(object):
         inputs = self.h[-1] # last layer output as input
         shape_inputs = inputs.get_shape().as_list()
         self.L = self.L + 1
+
+        # ====================== below differs between layers ==============
         print('Layer',self.L,': FC, input shape =',shape_inputs,', out_size =',out_size)
         in_size = shape_inputs[1]#self.session.run(tf.shape(inputs))[1] # TODO: get input shape = [1,out_size]
         shape_W = [in_size,out_size]
@@ -90,11 +90,12 @@ class BasicNN(object):
         
         Weights = self.weight_fc(shape_W)
         biases = self.bias_fc(shape_b)
-        WX_b = tf.matmul(inputs, Weights) + biases
+        pre_activation = tf.matmul(inputs, Weights) + biases
         if activation_func is None:
-            out = WX_b
+            out = pre_activation
         else:
-            out = activation_func(WX_b)
+            out = activation_func(pre_activation)
+        # ======================= above differs between layers ================
 
         self.topology.append(out_size)
         self.activations.append(activation_func)
@@ -103,7 +104,7 @@ class BasicNN(object):
         self.b.append(biases)
         self.h.append(out)
         # if output_layer:
-        self.logits = WX_b
+        self.logits = pre_activation
         self.prediction = self.h[-1]
         
         # for ParamCollection

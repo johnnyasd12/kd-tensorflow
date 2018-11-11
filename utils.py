@@ -1,6 +1,8 @@
 import numpy as np
 import os
 import tensorflow as tf
+import random
+
 
 def create_session(gpu_id='0', pp_mem_frac=None):
         os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id # can multiple?
@@ -11,6 +13,16 @@ def create_session(gpu_id='0', pp_mem_frac=None):
                 config.gpu_options.per_process_gpu_memory_fraction=pp_mem_frac
             session = tf.Session(config = config)
         return session
+    
+def close_session(session):
+    session.close()
+
+def set_rand_seed(seed=None): # TODO: keras, theano and so forth
+    if seed is None:
+        seed = int(os.getenv("SEED", 12))
+    tf.set_random_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
 def print_obj(obj_str):
     exec('global '+obj_str)
