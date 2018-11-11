@@ -62,6 +62,7 @@ class BasicNN(object):
             # inputs = self.h[-1]
             # shape_inputs = inputs.get_shape().as_list()
             self.L = self.L + 1
+            layer_name = None # TODO: as an input argument in Layer
             # ====================== below use layers ==============
             out_dims = layer_obj.out_dims
             Weights = layer_obj.weights
@@ -105,16 +106,22 @@ class BasicNN(object):
         # data_valid:list
         assert X.shape[0] == y.shape[0]
         n_samples = X.shape[0]
+
         if batch_size is None:
             batch_size = n_samples
+
         steps_per_epoch = int(n_samples/batch_size)
         counter = 0
+
         for epoch in range(1,n_epochs+1):
+
             if shuffle:
                 order = np.random.permutation(n_samples)
                 X = X[order]
                 y = y[order]
+
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
+
                 if step != steps_per_epoch-1: # last step
                     X_batch = X[step*batch_size:(step+1)*batch_size]
                     y_batch = y[step*batch_size:(step+1)*batch_size]
@@ -122,35 +129,37 @@ class BasicNN(object):
                     X_batch = X[step*batch_size:]
                     y_batch = y[step*batch_size:]
                 
+                # train
                 self.session.run(
                     self.train_op
                     , feed_dict={self.Xs:X_batch, self.ys:y_batch}
                 )
+
                 if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                     
+                    
+                        
+
                     loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
                     self.his_loss_train.append(loss_train)
                     print('Epoch',epoch,', step',step,', loss=',loss_train, end=' ')
-                    
-                    if self.metrics is not None:
-#                         y_pred_batch = self.session.run(self.prediction,feed_dict={self.Xs:X_batch})
-                        m = self.get_metrics(X_batch, y_batch)
-                        for m_name,m_value in m.items():
-                            print(m_name,'=',m_value, end=' ')
-                            self.his_metrics_train[m_name].append(m_value)
-
                     if val_set is not None:
                         X_val = val_set[0]
                         y_val = val_set[1]
+                        m_val = self.get_metrics(X_val,y_val)
                         loss_val = self.session.run(self.loss,feed_dict={self.Xs:X_val,self.ys:y_val})
                         self.his_loss_val.append(loss_val)
-                        print(', val_loss=',loss_val, end=' ')
-                        if self.metrics is not None:
-#                             y_pred_val = self.session.run(self.prediction,feed_dict={self.Xs:X_val})
-                            m_val = self.get_metrics(X_val,y_val)
-                            for m_name,m_value in m_val.items():
-                                print('val',m_name,'=',m_value,end=' ')
-                                self.his_metrics_val[m_name].append(m_value)
+                        print('val_loss=',loss_val, end=' ')
+                    
+                    if self.metrics is not None: # metrics
+                        m = self.get_metrics(X_batch, y_batch)
+                        for m_name,m_value in m.items():
+                            print(',', m_name,'=',m_value, end=' ')
+                            self.his_metrics_train[m_name].append(m_value)
+                        
+                            if val_set is not None:
+                                print('val',m_name,'=',m_val[m_name],end=' ')
+                                self.his_metrics_val[m_name].append(m_val[m_name])
                     print()
                     
                 counter += 1
@@ -164,6 +173,11 @@ class BasicNN(object):
             'acc':self.compute_accuracy
         }
         dict_metrics = {}
+
+        if self.metrics is None:
+            print('No metrics to get. ')
+            return None
+
         for m_name in self.metrics:
             if isinstance(m_name,str):
                 dict_metrics[m_name] = func[m_name](X,y)
