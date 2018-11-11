@@ -9,6 +9,9 @@ import os
 import matplotlib.pyplot as plt
 from utils import *
 
+from abc import ABCMeta, abstractmethod
+
+
 class BasicNN(object):
 
     def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs'):
@@ -70,35 +73,35 @@ class BasicNN(object):
     def add_fc(
         self
 #         , inputs
-#         , in_size
-        , out_size, activation_func=None
+#         , in_dims
+        , out_dims, activation_fn=None
         # , output_layer=False
         , initial=None):
         
-#         Weights = tf.Variable(tf.random_normal([in_size,out_size]))
-#         biases = tf.Variable(tf.zeros([1,out_size]) + 0.1)
+#         Weights = tf.Variable(tf.random_normal([in_dims,out_dims]))
+#         biases = tf.Variable(tf.zeros([1,out_dims]) + 0.1)
         inputs = self.h[-1] # last layer output as input
         shape_inputs = inputs.get_shape().as_list()
         self.L = self.L + 1
 
         # ====================== below differs between layers ==============
-        print('Layer',self.L,': FC, input shape =',shape_inputs,', out_size =',out_size)
-        in_size = shape_inputs[1]#self.session.run(tf.shape(inputs))[1] # TODO: get input shape = [1,out_size]
-        shape_W = [in_size,out_size]
-        shape_b = [1,out_size]
+        print('Layer',self.L,': FC, input shape =',shape_inputs,', out_dims =',out_dims)
+        in_dims = shape_inputs[1]#self.session.run(tf.shape(inputs))[1] # TODO: get input shape = [1,out_dims]
+        shape_W = [in_dims,out_dims]
+        shape_b = [1,out_dims]
 #         print('FC_layer, shape_W =',shape_W,', shape_b =',shape_b)
         
         Weights = self.weight_fc(shape_W)
         biases = self.bias_fc(shape_b)
         pre_activation = tf.matmul(inputs, Weights) + biases
-        if activation_func is None:
+        if activation_fn is None:
             out = pre_activation
         else:
-            out = activation_func(pre_activation)
+            out = activation_fn(pre_activation)
         # ======================= above differs between layers ================
 
-        self.topology.append(out_size)
-        self.activations.append(activation_func)
+        self.topology.append(out_dims)
+        self.activations.append(activation_fn)
         self.layer_funcs.append(self.add_fc)
         self.W.append(Weights)
         self.b.append(biases)
@@ -111,6 +114,36 @@ class BasicNN(object):
         self.params.append(self.W[-1])
         self.params.append(self.b[-1])
 #         self.pc = ParamCollection(self.session, params) # TODO: watch this
+
+    def add_layer(self, layer_obj, initial=None):
+        
+        if initial is None:
+            # inputs = self.h[-1]
+            # shape_inputs = inputs.get_shape().as_list()
+            self.L = self.L + 1
+            # ====================== below use layers ==============
+            out_dims = layer_obj.out_dims
+            Weights = layer_obj.weights
+            biases = layer_obj.biases
+            pre_activation = layer_obj.pre_activation
+            activation_fn = layer_obj.activation_fn
+            out_activation = layer_obj.out_activation
+            # ======================= above use layers ================
+
+            self.topology.append(out_dims)
+            self.activations.append(activation_fn)
+            self.layer_funcs.append(layer_obj)
+            self.W.append(Weights)
+            self.b.append(biases)
+            self.h.append(out_activation)
+            # if output_layer:
+            self.logits = pre_activation
+            self.prediction = self.h[-1]
+            
+            # for ParamCollection
+            self.params.append(self.W[-1])
+            self.params.append(self.b[-1])
+    #         self.pc = ParamCollection(self.session, params) # TODO: watch this
 
     def compile_nn(self, loss, opt, metrics=None):
         # metrics:list
@@ -196,6 +229,7 @@ class BasicNN(object):
             else: # TODO: gogogo
                 pass
         return dict_metrics
+
     def compute_accuracy(self, X, y): # input array
         correct_prediction = tf.equal(tf.argmax(self.prediction,axis=1), tf.argmax(self.ys,axis=1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, self.dtype_X))
