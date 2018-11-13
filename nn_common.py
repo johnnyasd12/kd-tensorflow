@@ -98,11 +98,13 @@ class BasicNN(object):
             for m_name in metrics:
                 self.his_metrics_train[m_name] = []
                 self.his_metrics_val[m_name] = []
-        self.pc = ParamCollection(self.session, self.params)
+        # self.pc = ParamCollection(self.session, self.params) # BUGFIX: ignore
         
-        self.session.run(tf.global_variables_initializer())
         
-    def train(self, X, y, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
+        
+    def train(self, X, y, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): # TODO: 
+
+        self.session.run(tf.global_variables_initializer()) # BUGFIX: 
         # data_valid:list
         assert X.shape[0] == y.shape[0]
         n_samples = X.shape[0]
@@ -137,13 +139,11 @@ class BasicNN(object):
 
                 if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                     
-                    
-                        
-
                     loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
                     self.his_loss_train.append(loss_train)
                     print('Epoch',epoch,', step',step,', loss=',loss_train, end=' ')
-                    if val_set is not None:
+
+                    if val_set is not None: # TODO: X_val, y_val go first
                         X_val = val_set[0]
                         y_val = val_set[1]
                         m_val = self.get_metrics(X_val,y_val)

@@ -24,9 +24,9 @@ def set_rand_seed(seed=None): # TODO: keras, theano and so forth
     np.random.seed(seed)
     random.seed(seed)
 
-def print_obj(obj_str):
-    exec('global '+obj_str)
-    exec('obj = '+obj_str)
+def print_obj(obj, obj_str):
+    # exec('global '+obj_str)
+    # exec('obj = '+obj_str)
     obj_type = type(obj)
     print(obj_str
         , obj_type
@@ -34,6 +34,11 @@ def print_obj(obj_str):
         )
     if obj_type == np.ndarray:
         print(obj.shape)
+
+    elif tf.contrib.framework.is_tensor(obj):
+        obj_shape = obj.get_shape().as_list()
+        print(obj_shape)
+        
     else:
         try:
             iterator = iter(obj)
