@@ -12,6 +12,11 @@ from utils import *
 from abc import ABCMeta, abstractmethod
 
 
+# TODO: train & soft_train: compute validation only epoch,
+# TODO: train & soft_train: early stop
+# TODO: train & soft_train: modulize
+# TODO: save, load model
+
 class BasicNN(object):
 
     def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs'):
