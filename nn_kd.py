@@ -8,8 +8,7 @@ from utils import *
 
 class SoftenedNN(BasicNN):
 
-    def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs'
-        , model_type=None):
+    def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs', model_type=None):
 
         super(SoftenedNN, self).__init__(input_dims, output_dims, dtype_X, dtype_y, session=session, ckpt_dir=ckpt_dir, ckpt_file=ckpt_file, log_dir=log_dir)
 
@@ -35,8 +34,16 @@ class SoftenedNN(BasicNN):
 
 
 class StudentNN(SoftenedNN): 
+# class StudentNN(BasicNN):
     
     def __init__(self, input_dims, output_dims, dtype_X, dtype_y, session=None, ckpt_dir=None, ckpt_file=None, log_dir='logs', model_type=None):
+
+        # super(StudentNN, self).__init__(input_dims, output_dims, dtype_X, dtype_y, session=session, ckpt_dir=ckpt_dir, ckpt_file=ckpt_file, log_dir=log_dir)
+        # super(SoftenedNN, self).__init__(input_dims, output_dims, dtype_X, dtype_y, session=session, ckpt_dir=ckpt_dir, ckpt_file=ckpt_file, log_dir=log_dir)
+        # self.temperature = tf.placeholder(tf.float32)
+        # self.model_type = model_type
+        # self.logits_with_T = None
+        # self.softened_prediction = None
 
         super(StudentNN, self).__init__(input_dims, output_dims, dtype_X, dtype_y, session=session, ckpt_dir=ckpt_dir, ckpt_file=ckpt_file, log_dir=log_dir, model_type=model_type)
 
@@ -56,7 +63,7 @@ class StudentNN(SoftenedNN):
         # self.loss_standard = loss_standard
         loss_soft = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_soft, logits=self.logits_with_T))
         self.loss_soft = loss_soft
-        self.loss = loss_soft#*self.coef_softloss*tf.square(self.temperature)# + self.loss # TODO: back
+        self.loss = loss_soft*self.coef_softloss*tf.square(self.temperature) + loss_standard # TODO: back
 
         self.opt = opt
         self.train_op = self.opt.minimize(self.loss)
@@ -86,6 +93,7 @@ class StudentNN(SoftenedNN):
                 order = np.random.permutation(n_samples)
                 X = X[order]
                 y = y[order]
+                y_soft = y_soft[order] # holyyyyyyyyyyyyyy
 
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
 

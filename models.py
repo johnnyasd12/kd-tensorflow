@@ -30,7 +30,7 @@ def build_big_model(input_dims, output_dims, session):
 
     return bigmodel
 
-def build_small_model(input_dims, output_dims, session, soften):
+def build_small_model(input_dims, output_dims, session, is_student):
 
     smallmodel = StudentNN(
         input_dims=input_dims
@@ -40,11 +40,11 @@ def build_small_model(input_dims, output_dims, session, soften):
         , dtype_y=tf.float32)
 
     smallmodel.add_layer(
-        FC(inputs=smallmodel.h[-1],out_dims=10,activation_fn=tf.nn.relu))
+        FC(inputs=smallmodel.h[-1],out_dims=5,activation_fn=tf.nn.relu))
     smallmodel.add_layer(
         FC(inputs=smallmodel.h[-1],out_dims=output_dims, activation_fn=tf.nn.softmax))
 
-    if soften:
+    if is_student:
         smallmodel.compile_student(
             loss_standard=tf.losses.softmax_cross_entropy(smallmodel.ys,smallmodel.logits)
             , opt=tf.train.AdamOptimizer(learning_rate=1e-3) #TODO: higher learning rate
