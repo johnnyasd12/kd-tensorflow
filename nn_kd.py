@@ -3,7 +3,7 @@ import numpy as np
 
 from nn_common import BasicNN
 from utils import *
-
+import gc
 
 
 class SoftenedNN(BasicNN):
@@ -63,7 +63,7 @@ class StudentNN(SoftenedNN):
         # self.loss_standard = loss_standard
         loss_soft = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_soft, logits=self.logits_with_T))
         self.loss_soft = loss_soft
-        self.loss = loss_soft*self.coef_softloss*tf.square(self.temperature) + loss_standard # TODO: back
+        self.loss = loss_soft*self.coef_softloss + loss_standard # TODO: back
 
         self.opt = opt
         self.train_op = self.opt.minimize(self.loss)
@@ -76,6 +76,7 @@ class StudentNN(SoftenedNN):
         
         
     def soft_train(self, X, y, y_soft, temperature, coef_softloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
+        
         # data_valid:list
         self.session.run(tf.global_variables_initializer()) # BUGFIX: 
         assert X.shape[0] == y.shape[0]
@@ -115,6 +116,7 @@ class StudentNN(SoftenedNN):
                 )
 
                 if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
+                # if counter%display_steps==0 or (step==steps_per_epoch-1):
                     
                     loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature, self.coef_softloss:coef_softloss})
                     self.his_loss_train.append(loss_train)
@@ -139,8 +141,9 @@ class StudentNN(SoftenedNN):
                                 print('val',m_name,'=',m_val[m_name],end=' ')
                                 self.his_metrics_val[m_name].append(m_val[m_name])
                     print()
-                    
-                counter += 1    
+                
+                gc.collect()
+                counter += 1
 
 
 
