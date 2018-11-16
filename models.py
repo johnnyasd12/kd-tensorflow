@@ -40,7 +40,7 @@ def build_small_model(input_dims, output_dims, session, is_student):
         , dtype_y=tf.float32)
 
     smallmodel.add_layer(
-        FC(inputs=smallmodel.h[-1],out_dims=32,activation_fn=tf.nn.relu))
+        FC(inputs=smallmodel.h[-1],out_dims=8,activation_fn=tf.nn.relu))
     smallmodel.add_layer(
         FC(inputs=smallmodel.h[-1],out_dims=output_dims, activation_fn=tf.nn.softmax))
 

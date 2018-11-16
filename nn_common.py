@@ -8,14 +8,17 @@ import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import matplotlib.pyplot as plt
 from utils import *
+import gc
 
 from abc import ABCMeta, abstractmethod
 
 
+# TODO: train & soft_train: modulize
 # TODO: train & soft_train: compute validation only epoch,
 # TODO: train & soft_train: early stop
-# TODO: train & soft_train: modulize
 # TODO: save, load model
+# TODO: KD coef hard_loss
+# TODO: Layers Conv2d, MaxPool2d
 
 class BasicNN(object):
 
@@ -166,6 +169,7 @@ class BasicNN(object):
                                 print('val',m_name,'=',m_val[m_name],end=' ')
                                 self.his_metrics_val[m_name].append(m_val[m_name])
                     print()
+                    gc.collect()
                     
                 counter += 1
                 
