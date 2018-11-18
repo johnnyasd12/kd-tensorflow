@@ -2,20 +2,25 @@ import numpy as np
 import os
 import tensorflow as tf
 import random
-
+from tensorflow.python.client import device_lib
 
 def create_session(gpu_id='0', pp_mem_frac=None):
-        os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id # can multiple?
-        with tf.device('/gpu:' + gpu_id):
-            config = tf.ConfigProto()
-            config.gpu_options.allow_growth = True
-            if pp_mem_frac is not None:
-                config.gpu_options.per_process_gpu_memory_fraction=pp_mem_frac
-            session = tf.Session(config = config)
-        return session
+
+    tf.reset_default_graph()
+    os.environ["CUDA_VISIBLE_DEVICES"] = gpu_id # can multiple?
+    with tf.device('/gpu:' + gpu_id):
+        config = tf.ConfigProto()
+        config.gpu_options.allow_growth = True
+        if pp_mem_frac is not None:
+            config.gpu_options.per_process_gpu_memory_fraction=pp_mem_frac
+        session = tf.Session(config = config)
+    return session
     
 def close_session(session):
     session.close()
+
+def check_available_device():
+    print(device_lib.list_local_devices())
 
 def set_rand_seed(seed=None): # TODO: keras, theano and so forth
     if seed is None:
@@ -38,7 +43,10 @@ def print_obj(obj, obj_str):
     elif tf.contrib.framework.is_tensor(obj):
         obj_shape = obj.get_shape().as_list()
         print(obj_shape)
-        
+    elif isinstance(obj, dict):
+        print()
+        for key, content in obj.items():
+            print(key, ':', content)
     else:
         try:
             iterator = iter(obj)
