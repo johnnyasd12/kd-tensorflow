@@ -17,8 +17,9 @@ from abc import ABCMeta, abstractmethod
 # TODO: train & soft_train: compute validation only epoch,
 # TODO: train & soft_train: early stop
 # TODO: save, load model
-# TODO: KD coef hard_loss
+# TODO: KD coef_hard_loss
 # TODO: Layers Conv2d, MaxPool2d
+# TODO: model.summary
 
 class BasicNN(object):
 
@@ -33,6 +34,7 @@ class BasicNN(object):
         self.activations = []
         self.layer_funcs = []
         # tensorflow
+        # tf.reset_default_graph()
         if session is None:
             self.session = create_session(gpu_id='0')
         else:
@@ -55,10 +57,13 @@ class BasicNN(object):
         self.opt = None
         self.train_op = None # opt.minimize(self.loss)
         self.metrics = None # metric names
+        self.metric_funcs = None # metric functions tensor
         # loss, metrics history
-        self.his_loss_train = []
-        self.his_loss_val = []
+        self.his_loss_train = [] # record every batch
+        self.his_loss_train_epoch = [] # record every epoch
+        self.his_loss_val = [] # record every epoch (?
         self.his_metrics_train = {}
+        self.his_metrics_train_epoch = {}
         self.his_metrics_val = {}
         # param collection
         self.pc = None
@@ -95,6 +100,11 @@ class BasicNN(object):
             self.params.append(self.b[-1])
     #         self.pc = ParamCollection(self.session, params) # TODO: watch this
 
+    def initialize_metric_tensor(self):
+        self.metric_funcs = {}
+        # define metric functions here
+        self.metric_funcs['acc'] = tf.reduce_mean(tf.cast(tf.equal(tf.argmax(self.prediction,axis=1), tf.argmax(self.ys,axis=1)), self.dtype_X))
+
     def compile_nn(self, loss, opt, metrics=None):
         # metrics:list
         
@@ -105,15 +115,23 @@ class BasicNN(object):
         if metrics is not None:
             for m_name in metrics:
                 self.his_metrics_train[m_name] = []
+                self.his_metrics_train_epoch[m_name] = []
                 self.his_metrics_val[m_name] = []
+        
+        self.initialize_metric_tensor()
+
+
+        # self.session.run(tf.local_variables_initializer()) # to make tf.metrics work
         # self.pc = ParamCollection(self.session, self.params) # BUGFIX: ignore
         
         
         
     def train(self, X, y, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): # TODO: 
-
-        self.session.run(tf.global_variables_initializer()) # BUGFIX: 
         # data_valid:list
+        
+        check_available_device()
+        self.session.run(tf.global_variables_initializer())
+        
         assert X.shape[0] == y.shape[0]
         n_samples = X.shape[0]
 
@@ -144,14 +162,22 @@ class BasicNN(object):
                     self.train_op
                     , feed_dict={self.Xs:X_batch, self.ys:y_batch}
                 )
+                loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
+                self.his_loss_train.append(loss_train)
+                if self.metrics is not None:
+                    m = self.get_metrics(X_batch, y_batch)
+                    for m_name, m_value in m.items():
+                        self.his_metrics_train[m_name].append(m_value)
 
-                if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
+                if counter%display_steps==0 or (step==steps_per_epoch-1):
+                # if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                     
-                    loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
-                    self.his_loss_train.append(loss_train)
+                    # loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
+                    # self.his_loss_train.append(loss_train)
                     print('Epoch',epoch,', step',step,', loss=',loss_train, end=' ')
 
-                    if val_set is not None: # TODO: X_val, y_val go first
+                    
+                    if val_set is not None and step==steps_per_epoch-1: # TODO: X_val, y_val go first
                         X_val = val_set[0]
                         y_val = val_set[1]
                         m_val = self.get_metrics(X_val,y_val)
@@ -160,16 +186,33 @@ class BasicNN(object):
                         print('val_loss=',loss_val, end=' ')
                     
                     if self.metrics is not None: # metrics
-                        m = self.get_metrics(X_batch, y_batch)
+                        # m = self.get_metrics(X_batch, y_batch)
                         for m_name,m_value in m.items():
                             print(',', m_name,'=',m_value, end=' ')
-                            self.his_metrics_train[m_name].append(m_value)
+                            # self.his_metrics_train[m_name].append(m_value)
                         
-                            if val_set is not None:
+                            if val_set is not None and step==steps_per_epoch-1:
                                 print('val',m_name,'=',m_val[m_name],end=' ')
                                 self.his_metrics_val[m_name].append(m_val[m_name])
                     print()
-                    gc.collect()
+
+                    if step==steps_per_epoch-1:
+                        his_epoch = self.his_loss_train[-steps_per_epoch:]
+                        # print('his_epoch',his_epoch)
+                        loss_train_epoch = np.mean(his_epoch)
+                        self.his_loss_train_epoch.append(loss_train_epoch)
+                        print('Epoch',epoch,'finished, loss=',loss_train_epoch, end=' ')
+                        if val_set is not None:
+                            print('val loss=',loss_val, end=' ')
+                        if self.metrics is not None:
+                            for m_name in m:
+                                metrics_train_epoch = np.mean(self.his_metrics_train[m_name][-steps_per_epoch:])
+                                self.his_metrics_train_epoch[m_name].append(metrics_train_epoch)
+                                print(', ',m_name,'=',metrics_train_epoch, end=' ')
+                                if val_set is not None:
+                                    print('val',m_name,'=',m_val[m_name])
+                        print()
+                    # gc.collect()
                     
                 counter += 1
                 
@@ -178,31 +221,53 @@ class BasicNN(object):
         return self.session.run(self.prediction,feed_dict={self.Xs:X})
 
     def get_metrics(self, X, y):
-        func = {
-            'acc':self.compute_accuracy
-        }
+
         dict_metrics = {}
 
         if self.metrics is None:
-            print('No metrics to get. ')
             return None
 
         for m_name in self.metrics:
             if isinstance(m_name,str):
-                dict_metrics[m_name] = func[m_name](X,y)
+                dict_metrics[m_name] = self.session.run(self.metric_funcs[m_name], feed_dict={self.Xs:X, self.ys:y})
             else: # TODO: gogogo
                 pass
         return dict_metrics
 
-    def compute_accuracy(self, X, y): # input array
-        correct_prediction = tf.equal(tf.argmax(self.prediction,axis=1), tf.argmax(self.ys,axis=1))
-        accuracy = tf.reduce_mean(tf.cast(correct_prediction, self.dtype_X))
-        result = self.session.run(accuracy, feed_dict={self.Xs: X, self.ys: y})
-        return result
+    # def get_metrics(self, X, y):
+    #     func = {
+    #         'acc':self.compute_accuracy
+    #     }
+    #     dict_metrics = {}
+
+    #     if self.metrics is None:
+    #         print('No metrics to get. ')
+    #         return None
+
+    #     for m_name in self.metrics:
+    #         if isinstance(m_name,str):
+    #             dict_metrics[m_name] = func[m_name](X,y)
+    #         else: # TODO: gogogo
+    #             pass
+    #     return dict_metrics
+
+    # def compute_accuracy(self, X, y): # input array
+    #     correct_prediction = tf.equal(tf.argmax(self.prediction,axis=1), tf.argmax(self.ys,axis=1))
+    #     accuracy = tf.reduce_mean(tf.cast(correct_prediction, self.dtype_X))
+    #     result = self.session.run(accuracy, feed_dict={self.Xs: X, self.ys: y})
+    #     return result
+
+    # def compute_accuracy(self, X, y):
+    #     tf_acc, tf_acc_op = tf.metrics.accuracy(tf.argmax(self.ys, 1), tf.argmax(self.prediction, 1))
+    #     self.session.run(tf.local_variables_initializer())
+    #     return self.session.run(tf_acc_op, feed_dict={self.Xs: X, self.ys: y})
+
     
     def plt_loss(self, title='loss'):
         print('Plotting loss...')
-        loss_t = self.his_loss_train
+        # loss_t = self.his_loss_train
+        # loss_v = self.his_loss_val
+        loss_t = self.his_loss_train_epoch
         loss_v = self.his_loss_val
         plt.title(title)
         plt.plot(loss_t, label='training loss')
@@ -217,9 +282,12 @@ class BasicNN(object):
             print('no metrics to plot')
         else:
             for m_name in self.metrics:
+                his_metric_train = self.his_metrics_train_epoch[m_name]
+                # his_metric_train = self.his_metrics_train[m_name]
+                his_metric_val = self.his_metrics_val[m_name]
                 plt.title('metrics: '+m_name)
-                plt.plot(self.his_metrics_train[m_name], label='training '+m_name)
-                plt.plot(self.his_metrics_val[m_name], label='validation '+m_name)
+                plt.plot(his_metric_train, label='training '+m_name)
+                plt.plot(his_metric_val, label='validation '+m_name)
                 plt.legend()
                 plt.show()
         
