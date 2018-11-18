@@ -4,6 +4,7 @@ import numpy as np
 from nn_common import BasicNN
 from utils import *
 import gc
+import time
 
 
 class SoftenedNN(BasicNN):
@@ -25,6 +26,7 @@ class SoftenedNN(BasicNN):
         # print_obj(self.logits,'self.logits')
         # print_obj(self.logits_with_T,'self.logits_with_T')
         self.softened_prediction = tf.nn.softmax(self.logits_with_T)
+        
         # BUGFIX: session.global
 
     def predict_softened(self, X, temperature):
@@ -71,14 +73,20 @@ class StudentNN(SoftenedNN):
         if metrics is not None:
             for m_name in metrics:
                 self.his_metrics_train[m_name] = []
+                self.his_metrics_train_epoch[m_name] = []
                 self.his_metrics_val[m_name] = []
+
+        self.initialize_metric_tensor()
+        
 
         
         
     def soft_train(self, X, y, y_soft, temperature, coef_softloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
         
+        check_available_device()
         # data_valid:list
-        self.session.run(tf.global_variables_initializer()) # BUGFIX: 
+        self.session.run(tf.global_variables_initializer())
+
         assert X.shape[0] == y.shape[0]
         n_samples = X.shape[0]
 
@@ -97,7 +105,10 @@ class StudentNN(SoftenedNN):
                 y_soft = y_soft[order] # holyyyyyyyyyyyyyy
 
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
+                start_step = time.clock()
 
+                t_cost = {}
+                start_batch = time.clock()
                 if step != steps_per_epoch-1: # last step
                     X_batch = X[step*batch_size:(step+1)*batch_size]
                     y_batch = y[step*batch_size:(step+1)*batch_size]
@@ -106,44 +117,70 @@ class StudentNN(SoftenedNN):
                     X_batch = X[step*batch_size:]
                     y_batch = y[step*batch_size:]
                     y_soft_batch = y_soft[step*batch_size:]
-                
+                t_cost['get_batch'] = time.clock()-start_batch
                 # train
+                start_train = time.clock()
                 self.session.run(
                     self.train_op
                     , feed_dict={self.Xs:X_batch
                     , self.ys:y_batch
                     , self.y_soft:y_soft_batch, self.temperature:temperature, self.coef_softloss:coef_softloss}
                 )
+                t_cost['train_op'] = time.clock()-start_train
 
-                if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
-                # if counter%display_steps==0 or (step==steps_per_epoch-1):
-                    
+                # if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
+                if counter%display_steps==0 or (step==steps_per_epoch-1):
+                    start_loss = time.clock()
                     loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature, self.coef_softloss:coef_softloss})
+                    start_append = time.clock()
+                    t_cost['loss_train'] = start_append-start_loss
                     self.his_loss_train.append(loss_train)
                     print('Epoch',epoch,', step',step,', loss=',loss_train, end=' ')
-                    
-                    if val_set is not None: # TODO: X_val, y_val go first
+
+                    if val_set is not None and step==steps_per_epoch-1: # TODO: X_val, y_val go first
                         X_val = val_set[0]
                         y_val = val_set[1]
                         y_val_soft = val_set[2]
-                        m_val = self.get_metrics(X_val,y_val)
+                        start_loss_val = time.clock()
                         loss_val = self.session.run(self.loss,feed_dict={self.Xs:X_val, self.ys:y_val, self.y_soft:y_val_soft, self.temperature:temperature, self.coef_softloss:coef_softloss})
+                        start_m_val = time.clock()
+                        t_cost['loss_val'] = start_m_val-start_loss_val
+                        if self.metrics is not None:
+                            m_val = self.get_metrics(X_val,y_val)
+                            t_cost['metric_val'] = time.clock()-start_m_val
                         self.his_loss_val.append(loss_val)
+                        
                         print('val_loss=',loss_val, end=' ')
                     
                     if self.metrics is not None: # metrics
+                        start_metric = time.clock()
                         m = self.get_metrics(X_batch, y_batch)
+                        t_cost['metric batch'] = time.clock()-start_metric
                         for m_name,m_value in m.items():
                             print(',', m_name,'=',m_value, end=' ')
                             self.his_metrics_train[m_name].append(m_value)
                         
-                            if val_set is not None:
+                            if val_set is not None and step==steps_per_epoch-1:
                                 print('val',m_name,'=',m_val[m_name],end=' ')
                                 self.his_metrics_val[m_name].append(m_val[m_name])
                     print()
+                    
+                    if step==steps_per_epoch-1:
+                        loss_train_epoch = np.mean(self.his_loss_train[-steps_per_epoch:])
+                        self.his_loss_train_epoch.append(loss_train_epoch)
+                        print('Epoch',epoch,'finished, loss=',loss_train_epoch, end=' ')
+                        if self.metrics is not None:
+                            for m_name in m:
+                                metrics_train_epoch = np.mean(self.his_metrics_train[m_name][-steps_per_epoch:])
+                                self.his_metrics_train_epoch[m_name].append(metrics_train_epoch)
+
+                    t_cost['whole'] = time.clock()-start_step
+                    t_cost['display_whole'] = time.clock()-start_loss
+                    print_obj(t_cost,'t_cost')
                 
-                gc.collect()
+                # gc.collect()
                 counter += 1
+
 
 
 
