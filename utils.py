@@ -24,12 +24,16 @@ def check_available_device():
 
 def set_rand_seed(seed=None): # TODO: keras, theano and so forth
     if seed is None:
-        seed = int(os.getenv("SEED", 12))
+        # seed = int(os.getenv("SEED", 12))
+        pass
     tf.set_random_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
 
-def print_obj(obj, obj_str):
+def get_tensor_shape(tensor):
+    return tensor.get_shape().as_list(), tensor.get_shape().num_elements()
+
+def print_obj(obj, obj_str): # support ndarray, Tensor, dict, iterable
     # exec('global '+obj_str)
     # exec('obj = '+obj_str)
     obj_type = type(obj)
@@ -41,7 +45,7 @@ def print_obj(obj, obj_str):
         print(obj.shape)
 
     elif tf.contrib.framework.is_tensor(obj):
-        obj_shape = obj.get_shape().as_list()
+        obj_shape = obj.get_shape().as_list() # get_shape().num_elements() can get sum
         print(obj_shape)
     elif isinstance(obj, dict):
         print()
