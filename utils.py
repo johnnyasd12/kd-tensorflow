@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 import random
 from tensorflow.python.client import device_lib
+from sklearn.metrics import confusion_matrix
 
 def create_session(gpu_id='0', pp_mem_frac=None):
 
@@ -32,6 +33,37 @@ def set_rand_seed(seed=None): # TODO: keras, theano and so forth
 
 def get_tensor_shape(tensor):
     return tensor.get_shape().as_list(), tensor.get_shape().num_elements()
+
+def plot_confusion_matrix(y_true, y_pred):
+    # This is called from print_test_accuracy() below.
+
+    # cls_pred is an array of the predicted class-number for
+    # all images in the test-set.
+
+    # Get the number of classes
+    num_classes = y_true.shape[1]
+    
+    # Get the confusion matrix using sklearn.
+    cm = confusion_matrix(y_true=y_true,
+                          y_pred=y_pred)
+
+    # Print the confusion matrix as text.
+    print(cm)
+
+    # Plot the confusion matrix as an image.
+    plt.matshow(cm)
+
+    # Make various adjustments to the plot.
+    plt.colorbar()
+    tick_marks = np.arange(num_classes)
+    plt.xticks(tick_marks, range(num_classes))
+    plt.yticks(tick_marks, range(num_classes))
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+
+    # Ensure the plot is shown correctly with multiple plots
+    # in a single Notebook cell.
+    plt.show()
 
 def print_obj(obj, obj_str): # support ndarray, Tensor, dict, iterable
     # exec('global '+obj_str)

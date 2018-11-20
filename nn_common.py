@@ -14,12 +14,13 @@ from abc import ABCMeta, abstractmethod
 
 
 # TODO: train & soft_train: modulize
-# TODO: train & soft_train: compute validation only epoch,
 # TODO: train & soft_train: early stop
 # TODO: save, load model
 # TODO: KD coef_hard_loss
 # TODO: Layers Conv2d, MaxPool2d
 # TODO: model.summary
+# TODO: dropout keep_prob should use Tensor!? in document
+# TODO: loss function draw wrong? train&soft_train
 
 class BasicNN(object):
 

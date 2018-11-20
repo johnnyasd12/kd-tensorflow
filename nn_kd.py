@@ -26,7 +26,7 @@ class SoftenedNN(BasicNN):
         # print_obj(self.logits,'self.logits')
         # print_obj(self.logits_with_T,'self.logits_with_T')
         self.softened_prediction = tf.nn.softmax(self.logits_with_T)
-        
+
         # BUGFIX: session.global
 
     def predict_softened(self, X, temperature):
@@ -107,8 +107,8 @@ class StudentNN(SoftenedNN):
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
                 start_step = time.clock()
 
-                t_cost = {}
-                start_batch = time.clock()
+                t_cost = {} # compute each computation cost time
+                
                 if step != steps_per_epoch-1: # last step
                     X_batch = X[step*batch_size:(step+1)*batch_size]
                     y_batch = y[step*batch_size:(step+1)*batch_size]
@@ -117,7 +117,7 @@ class StudentNN(SoftenedNN):
                     X_batch = X[step*batch_size:]
                     y_batch = y[step*batch_size:]
                     y_soft_batch = y_soft[step*batch_size:]
-                t_cost['get_batch'] = time.clock()-start_batch
+                
                 # train
                 start_train = time.clock()
                 self.session.run(
@@ -176,7 +176,7 @@ class StudentNN(SoftenedNN):
 
                     t_cost['whole'] = time.clock()-start_step
                     t_cost['display_whole'] = time.clock()-start_loss
-                    print_obj(t_cost,'t_cost')
+                    # print_obj(t_cost,'t_cost')
                 
                 # gc.collect()
                 counter += 1
