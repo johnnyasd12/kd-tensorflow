@@ -13,13 +13,13 @@ import gc
 from abc import ABCMeta, abstractmethod
 
 
-# TODO: train & soft_train: modulize
+# TODO: train & soft_train: modulize, def train_module():
 # TODO: train & soft_train: early stop
 # TODO: save, load model
 # TODO: KD coef_hard_loss
 # TODO: Layers Conv2d, MaxPool2d
 # TODO: model.summary
-# TODO: dropout keep_prob should use Tensor!? in document
+# TODO: Dropout BUGFIX: keep_prob should be 1 while predicting, use tf.nn.dropout / tf.layers.dropout, https://stackoverflow.com/questions/44971349/how-to-turn-off-dropout-for-testing-in-tensorflow
 # TODO: loss function draw wrong? train&soft_train
 
 class BasicNN(object):
@@ -33,7 +33,7 @@ class BasicNN(object):
         self.L = 0 # n_layers except input layer
         self.topology = [input_dims] # output dims of each layer
         self.activations = []
-        self.layer_funcs = []
+        self.layer_objs = []
         # tensorflow
         # tf.reset_default_graph()
         if session is None:
@@ -50,7 +50,8 @@ class BasicNN(object):
         self.W = [] # weights in each layer
         self.b =[] # biases in each layer
         self.h = [self.Xs] # activation output in each layer
-        self.params = [] # store all Ws and bs, will be modified when W and b is trained i think
+        self.params = [] # store all Ws and bs
+        # self.dropout_keepprob = {} # to be feed_dict while train_op
         self.logits = None # neurons before input to final activation
         self.prediction = None
         self.loss = None # output loss
@@ -88,7 +89,7 @@ class BasicNN(object):
 
             self.topology.append(out_dims)
             self.activations.append(activation_fn)
-            self.layer_funcs.append(layer_obj)
+            self.layer_objs.append(layer_obj)
             self.W.append(Weights)
             self.b.append(biases)
             self.h.append(out_activation)
@@ -139,24 +140,31 @@ class BasicNN(object):
         if batch_size is None:
             batch_size = n_samples
 
-        steps_per_epoch = int(n_samples/batch_size)
+        steps_per_epoch = int(n_samples//batch_size)
         counter = 0
 
         for epoch in range(1,n_epochs+1):
 
             if shuffle:
                 order = np.random.permutation(n_samples)
-                X = X[order]
-                y = y[order]
+            #     X = X[order]
+            #     y = y[order]
+            else:
+                order = np.arange(n_samples)
 
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
 
-                if step != steps_per_epoch-1: # last step
-                    X_batch = X[step*batch_size:(step+1)*batch_size]
-                    y_batch = y[step*batch_size:(step+1)*batch_size]
-                else:
-                    X_batch = X[step*batch_size:]
-                    y_batch = y[step*batch_size:]
+                # if step != steps_per_epoch-1: # last step
+                    
+                #     X_batch = X[step*batch_size:(step+1)*batch_size]
+                #     y_batch = y[step*batch_size:(step+1)*batch_size]
+                # else:
+                #     X_batch = X[step*batch_size:]
+                #     y_batch = y[step*batch_size:]
+
+                indices = order[step*batch_size:(step+1)*batch_size]
+                X_batch = X[indices]
+                y_batch = y[indices]
                 
                 # train
                 self.session.run(

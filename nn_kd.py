@@ -65,7 +65,7 @@ class StudentNN(SoftenedNN):
         # self.loss_standard = loss_standard
         loss_soft = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_soft, logits=self.logits_with_T))
         self.loss_soft = loss_soft
-        self.loss = loss_soft*self.coef_softloss + loss_standard # TODO: back
+        self.loss = loss_soft#*self.coef_softloss*tf.square(self.temperature) + loss_standard*(1-self.coef_softloss) # TODO: back
 
         self.opt = opt
         self.train_op = self.opt.minimize(self.loss)
@@ -93,30 +93,42 @@ class StudentNN(SoftenedNN):
         if batch_size is None:
             batch_size = n_samples
 
-        steps_per_epoch = int(n_samples/batch_size)
+        steps_per_epoch = int(n_samples//batch_size)
         counter = 0
 
         for epoch in range(1,n_epochs+1):
 
+            # if shuffle:
+            #     order = np.random.permutation(n_samples)
+            #     X = X[order]
+            #     y = y[order]
+            #     y_soft = y_soft[order] # holyyyyyyyyyyyyyy
+
             if shuffle:
                 order = np.random.permutation(n_samples)
-                X = X[order]
-                y = y[order]
-                y_soft = y_soft[order] # holyyyyyyyyyyyyyy
+            #     X = X[order]
+            #     y = y[order]
+            else:
+                order = np.arange(n_samples)
 
             for step in range(0,steps_per_epoch): # n_sample=1000, batch_size=10, steps_per_epoch=100
                 start_step = time.clock()
 
                 t_cost = {} # compute each computation cost time
                 
-                if step != steps_per_epoch-1: # last step
-                    X_batch = X[step*batch_size:(step+1)*batch_size]
-                    y_batch = y[step*batch_size:(step+1)*batch_size]
-                    y_soft_batch = y_soft[step*batch_size:(step+1)*batch_size]
-                else:
-                    X_batch = X[step*batch_size:]
-                    y_batch = y[step*batch_size:]
-                    y_soft_batch = y_soft[step*batch_size:]
+                # if step != steps_per_epoch-1: # last step
+                #     X_batch = X[step*batch_size:(step+1)*batch_size]
+                #     y_batch = y[step*batch_size:(step+1)*batch_size]
+                #     y_soft_batch = y_soft[step*batch_size:(step+1)*batch_size]
+                # else:
+                #     X_batch = X[step*batch_size:]
+                #     y_batch = y[step*batch_size:]
+                #     y_soft_batch = y_soft[step*batch_size:]
+
+                indices = order[step*batch_size:(step+1)*batch_size]
+                X_batch = X[indices]
+                y_batch = y[indices]
+                y_soft_batch = y_soft[indices]
                 
                 # train
                 start_train = time.clock()
@@ -173,10 +185,12 @@ class StudentNN(SoftenedNN):
                             for m_name in m:
                                 metrics_train_epoch = np.mean(self.his_metrics_train[m_name][-steps_per_epoch:])
                                 self.his_metrics_train_epoch[m_name].append(metrics_train_epoch)
+                        print()
 
                     t_cost['whole'] = time.clock()-start_step
                     t_cost['display_whole'] = time.clock()-start_loss
                     # print_obj(t_cost,'t_cost')
+
                 
                 # gc.collect()
                 counter += 1
