@@ -65,7 +65,8 @@ class StudentNN(SoftenedNN):
         # self.loss_standard = loss_standard
         loss_soft = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_soft, logits=self.logits_with_T))
         self.loss_soft = loss_soft
-        self.loss = loss_soft#*self.coef_softloss*tf.square(self.temperature) + loss_standard*(1-self.coef_softloss) # TODO: back
+        # self.loss = loss_soft*self.coef_softloss*tf.square(self.temperature) + loss_standard*(1-self.coef_softloss) # TODO: back
+        self.loss = loss_soft*self.coef_softloss + loss_standard # TODO: back
 
         self.opt = opt
         self.train_op = self.opt.minimize(self.loss)
