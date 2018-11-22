@@ -4,6 +4,7 @@ import tensorflow as tf
 import random
 from tensorflow.python.client import device_lib
 from sklearn.metrics import confusion_matrix
+from matplotlib import pyplot as plt
 
 def create_session(gpu_id='0', pp_mem_frac=None):
 
@@ -33,6 +34,25 @@ def set_rand_seed(seed=None): # TODO: keras, theano and so forth
 
 def get_tensor_shape(tensor):
     return tensor.get_shape().as_list(), tensor.get_shape().num_elements()
+
+# plot and show sample # deprecated
+def plot_mnist(X, y, y_soft=None, n_samples=6, round_show=4):
+
+    n_data = X.shape[0]
+    indices = np.random.choice(n_data,n_samples)
+    for i in range(n_samples):
+        sample = X[[indices[i]]]
+        label = y[indices[i]]
+        if y_soft is not None:
+            label_soft = y_soft[indices[i]]
+        plt.imshow(sample.reshape((28,28)), cmap='gray')
+        plt.show()
+        # pred = student.predict(sample)
+        # pred_t = student.predict_softened(sample, temperature=temperature)
+        print(label)
+        print(label_soft)
+        # print(np.round(pred,round_show))
+        # print(np.round(pred_t,round_show))
 
 def plot_confusion_matrix(y_true, y_pred):
     # This is called from print_test_accuracy() below.
