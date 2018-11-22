@@ -36,10 +36,14 @@ def get_tensor_shape(tensor):
     return tensor.get_shape().as_list(), tensor.get_shape().num_elements()
 
 # plot and show sample # deprecated
-def plot_mnist(X, y, y_soft=None, n_samples=6, round_show=4):
+def plot_mnist(X, y, y_soft=None, n_samples=6, round_show=4, random=False):
 
     n_data = X.shape[0]
-    indices = np.random.choice(n_data,n_samples)
+    if random:
+        indices = np.random.choice(n_data,n_samples)
+    else:
+        indices = np.arange(n_samples)
+    
     for i in range(n_samples):
         sample = X[[indices[i]]]
         label = y[indices[i]]
