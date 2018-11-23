@@ -21,6 +21,7 @@ from abc import ABCMeta, abstractmethod
 # TODO: model.summary
 # TODO: Dropout BUGFIX: keep_prob should be 1 while predicting, use tf.nn.dropout / tf.layers.dropout, https://stackoverflow.com/questions/44971349/how-to-turn-off-dropout-for-testing-in-tensorflow
 # TODO: loss function draw wrong? train&soft_train
+# TODO: start_session in the end of compile_nn ?
 
 class BasicNN(object):
 
@@ -302,8 +303,12 @@ class BasicNN(object):
         
     def save_model(self): # TODO
         pass
+
     def load_model(self): # TODO
         pass
+
+    def close_session(self): # TODO
+        self.session.close()
 
 
 
