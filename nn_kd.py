@@ -51,6 +51,7 @@ class StudentNN(SoftenedNN):
 
         self.y_soft = tf.placeholder(tf.float32, [None, output_dims], name='y_soft')
         self.coef_softloss = tf.placeholder(tf.float32)
+        self.coef_hardloss = tf.placeholder(tf.float32)
         # self.loss_total = None
         self.loss_standard = None
         self.loss_soft = None
@@ -66,7 +67,7 @@ class StudentNN(SoftenedNN):
         loss_soft = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=self.y_soft, logits=self.logits_with_T))
         self.loss_soft = loss_soft
         # self.loss = loss_soft*self.coef_softloss*tf.square(self.temperature) + loss_standard*(1-self.coef_softloss) # TODO: back
-        self.loss = loss_soft*self.coef_softloss + loss_standard # TODO: back
+        self.loss = loss_soft*self.coef_softloss + loss_standard*self.coef_hardloss # TODO: back
 
         self.opt = opt
         self.train_op = self.opt.minimize(self.loss)
@@ -82,7 +83,7 @@ class StudentNN(SoftenedNN):
 
         
         
-    def soft_train(self, X, y, y_soft, temperature, coef_softloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
+    def soft_train(self, X, y, y_soft, temperature, coef_softloss, coef_hardloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
         
         check_available_device()
         # data_valid:list
@@ -137,14 +138,16 @@ class StudentNN(SoftenedNN):
                     self.train_op
                     , feed_dict={self.Xs:X_batch
                     , self.ys:y_batch
-                    , self.y_soft:y_soft_batch, self.temperature:temperature, self.coef_softloss:coef_softloss}
+                    , self.y_soft:y_soft_batch, self.temperature:temperature
+                    , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss}
                 )
                 t_cost['train_op'] = time.clock()-start_train
 
                 # if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                 if counter%display_steps==0 or (step==steps_per_epoch-1):
                     start_loss = time.clock()
-                    loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature, self.coef_softloss:coef_softloss})
+                    loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature
+                        , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss})
                     start_append = time.clock()
                     t_cost['loss_train'] = start_append-start_loss
                     self.his_loss_train.append(loss_train)
@@ -155,7 +158,8 @@ class StudentNN(SoftenedNN):
                         y_val = val_set[1]
                         y_val_soft = val_set[2]
                         start_loss_val = time.clock()
-                        loss_val = self.session.run(self.loss,feed_dict={self.Xs:X_val, self.ys:y_val, self.y_soft:y_val_soft, self.temperature:temperature, self.coef_softloss:coef_softloss})
+                        loss_val = self.session.run(self.loss,feed_dict={self.Xs:X_val, self.ys:y_val, self.y_soft:y_val_soft, self.temperature:temperature
+                            , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss})
                         start_m_val = time.clock()
                         t_cost['loss_val'] = start_m_val-start_loss_val
                         if self.metrics is not None:
