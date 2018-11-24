@@ -143,14 +143,15 @@ class StudentNN(SoftenedNN):
                 )
                 t_cost['train_op'] = time.clock()-start_train
 
+                start_loss = time.clock()
+                loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature
+                        , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss})
+                start_append = time.clock()
+                t_cost['loss_train'] = start_append-start_loss
+                self.his_loss_train.append(loss_train)
                 # if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                 if counter%display_steps==0 or (step==steps_per_epoch-1):
-                    start_loss = time.clock()
-                    loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature
-                        , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss})
-                    start_append = time.clock()
-                    t_cost['loss_train'] = start_append-start_loss
-                    self.his_loss_train.append(loss_train)
+                    
                     print('Epoch',epoch,', step',step,', loss=',loss_train, end=' ')
 
                     if val_set is not None and step==steps_per_epoch-1: # TODO: X_val, y_val go first
