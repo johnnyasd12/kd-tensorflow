@@ -83,7 +83,7 @@ class StudentNN(SoftenedNN):
 
         
         
-    def soft_train(self, X, y, y_soft, temperature, coef_softloss, coef_hardloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): 
+    def soft_train(self, X, y, y_soft, temperature, coef_softloss, coef_hardloss, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True, earlystop_params={}): 
         
         check_available_device()
         # data_valid:list
@@ -97,6 +97,16 @@ class StudentNN(SoftenedNN):
 
         steps_per_epoch = int(n_samples//batch_size)
         counter = 0
+
+        # earlystop
+        if earlystop_params != {}:
+            monitor = earlystop_params['monitor']
+            patience = earlystop_params['patience']
+            earlystop = {
+            'max_metric':-np.inf, 
+            'epoch_diff':0, 
+            'stop':False
+            }
 
         for epoch in range(1,n_epochs+1):
 
@@ -149,6 +159,13 @@ class StudentNN(SoftenedNN):
                 start_append = time.clock()
                 t_cost['loss_train'] = start_append-start_loss
                 self.his_loss_train.append(loss_train)
+
+                if self.metrics is not None:
+                    start_metric = time.clock()
+                    m = self.get_metrics(X_batch, y_batch)
+                    t_cost['metric batch'] = time.clock()-start_metric
+                    for m_name,m_value in m.items():
+                        self.his_metrics_train[m_name].append(m_value)
                 # if counter%display_steps==0 or (epoch==n_epochs and step==steps_per_epoch-1):
                 if counter%display_steps==0 or (step==steps_per_epoch-1):
                     
@@ -171,13 +188,13 @@ class StudentNN(SoftenedNN):
                         print('val_loss=',loss_val, end=' ')
                     
                     if self.metrics is not None: # metrics
-                        start_metric = time.clock()
-                        m = self.get_metrics(X_batch, y_batch)
-                        t_cost['metric batch'] = time.clock()-start_metric
+                        # start_metric = time.clock()
+                        # m = self.get_metrics(X_batch, y_batch)
+                        # t_cost['metric batch'] = time.clock()-start_metric
                         for m_name,m_value in m.items():
+                            # self.his_metrics_train[m_name].append(m_value)
                             print(',', m_name,'=',m_value, end=' ')
-                            self.his_metrics_train[m_name].append(m_value)
-                        
+                            
                             if val_set is not None and step==steps_per_epoch-1:
                                 print('val',m_name,'=',m_val[m_name],end=' ')
                                 self.his_metrics_val[m_name].append(m_val[m_name])
@@ -187,20 +204,60 @@ class StudentNN(SoftenedNN):
                         loss_train_epoch = np.mean(self.his_loss_train[-steps_per_epoch:])
                         self.his_loss_train_epoch.append(loss_train_epoch)
                         print('Epoch',epoch,'finished, loss=',loss_train_epoch, end=' ')
+                        if val_set is not None:
+                            print('val loss=',loss_val, end=' ')
                         if self.metrics is not None:
                             for m_name in m:
                                 metrics_train_epoch = np.mean(self.his_metrics_train[m_name][-steps_per_epoch:])
                                 self.his_metrics_train_epoch[m_name].append(metrics_train_epoch)
-                        print()
+                                print(', ',m_name,'=',metrics_train_epoch, end=' ')
+                                if val_set is not None:
+                                    print('val',m_name,'=',m_val[m_name])
+                        # print()
+
+                        # early stop
+                        if earlystop_params!={}:
+                            
+                            if monitor=='val_loss':
+                                if val_set is not None:
+                                    early_metric = -self.his_loss_val[-1]
+                                else:
+                                    print('Error: No val_set to get val_loss in earlystopping. ')
+                            elif monitor=='loss':
+                                early_metric = -self.his_loss_train_epoch[-1]
+                            elif 'val_' in monitor: # metrics
+                                if val_set is not None:
+                                    m_name = monitor.split('val_')[1]
+                                    early_metric = self.his_metrics_val[m_name][-1]
+                                else:
+                                    print('Error: No val_set to get',monitor,'in earlystopping. ')
+                            else:
+                                early_metric = self.his_metrics_train_epoch[m_name][-1]
+
+
+                            if early_metric > earlystop['max_metric']:
+                                earlystop['max_metric'] = early_metric
+                                earlystop['epoch_diff'] = 0
+                                print('*')
+                            else:
+                                earlystop['epoch_diff'] += 1
+                                print()
+
+                            if earlystop['epoch_diff'] > patience:
+                                print('Stop training,', monitor, "didn't improve more than", patience, 'epoch. ')
+                                earlystop['stop'] = True
+                                break
 
                     t_cost['whole'] = time.clock()-start_step
                     t_cost['display_whole'] = time.clock()-start_loss
-                    # print_obj(t_cost,'t_cost')
+                    print_obj(t_cost,'t_cost')
 
                 
                 # gc.collect()
                 counter += 1
 
+            if earlystop_params!={} and earlystop['stop']:
+                break
 
 
 

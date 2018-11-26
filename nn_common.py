@@ -16,12 +16,12 @@ from abc import ABCMeta, abstractmethod
 # TODO: train & soft_train: modulize, def train_module():
 # TODO: train & soft_train: early stop
 # TODO: save, load model
-# TODO: KD coef_hard_loss
 # TODO: Layers Conv2d, MaxPool2d
 # TODO: model.summary
 # TODO: Dropout BUGFIX: keep_prob should be 1 while predicting, use tf.nn.dropout / tf.layers.dropout, https://stackoverflow.com/questions/44971349/how-to-turn-off-dropout-for-testing-in-tensorflow
-# TODO: loss function draw wrong? train&soft_train
+# TODO: loss function draw wrong? train&soft_train soft_train still not fixed
 # TODO: start_session in the end of compile_nn ?
+# TODO: history loss, val_loss use dictionary
 
 class BasicNN(object):
 
@@ -129,7 +129,7 @@ class BasicNN(object):
         
         
         
-    def train(self, X, y, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True): # TODO: 
+    def train(self, X, y, n_epochs, batch_size=None, val_set=None, display_steps=50, shuffle=True, earlystop_params = {}): # TODO: 
         # data_valid:list
         
         check_available_device()
@@ -143,6 +143,16 @@ class BasicNN(object):
 
         steps_per_epoch = int(n_samples//batch_size)
         counter = 0
+
+        # earlystop
+        if earlystop_params != {}:
+            monitor = earlystop_params['monitor']
+            patience = earlystop_params['patience']
+            earlystop = {
+            'max_metric':-np.inf, 
+            'epoch_diff':0, 
+            'stop':False
+            }
 
         for epoch in range(1,n_epochs+1):
 
@@ -208,7 +218,6 @@ class BasicNN(object):
 
                     if step==steps_per_epoch-1:
                         his_epoch = self.his_loss_train[-steps_per_epoch:]
-                        # print('his_epoch',his_epoch)
                         loss_train_epoch = np.mean(his_epoch)
                         self.his_loss_train_epoch.append(loss_train_epoch)
                         print('Epoch',epoch,'finished, loss=',loss_train_epoch, end=' ')
@@ -221,10 +230,47 @@ class BasicNN(object):
                                 print(', ',m_name,'=',metrics_train_epoch, end=' ')
                                 if val_set is not None:
                                     print('val',m_name,'=',m_val[m_name])
-                        print()
+                        # print()
+
+                        # early stop
+                        if earlystop_params!={}:
+                            
+                            if monitor=='val_loss':
+                                if val_set is not None:
+                                    early_metric = -self.his_loss_val[-1]
+                                else:
+                                    print('Error: No val_set to get val_loss in earlystopping. ')
+                            elif monitor=='loss':
+                                early_metric = -self.his_loss_train_epoch[-1]
+                            elif 'val_' in monitor: # metrics
+                                if val_set is not None:
+                                    m_name = monitor.split('val_')[1]
+                                    early_metric = self.his_metrics_val[m_name][-1]
+                                else:
+                                    print('Error: No val_set to get',monitor,'in earlystopping. ')
+                            else:
+                                early_metric = self.his_metrics_train_epoch[m_name][-1]
+
+
+                            if early_metric > earlystop['max_metric']:
+                                earlystop['max_metric'] = early_metric
+                                earlystop['epoch_diff'] = 0
+                                print('*')
+                            else:
+                                earlystop['epoch_diff'] += 1
+                                print()
+
+                            if earlystop['epoch_diff'] > patience:
+                                print('Stop training,', monitor, "didn't improve more than", patience, 'epoch. ')
+                                earlystop['stop'] = True
+                                break
                     # gc.collect()
                     
                 counter += 1
+
+            if earlystop_params!={} and earlystop['stop']:
+                break
+
                 
     
     def predict(self, X):
