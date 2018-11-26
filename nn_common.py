@@ -14,7 +14,6 @@ from abc import ABCMeta, abstractmethod
 
 
 # TODO: train & soft_train: modulize, def train_module():
-# TODO: train & soft_train: early stop
 # TODO: save, load model
 # TODO: Layers Conv2d, MaxPool2d
 # TODO: model.summary
@@ -178,11 +177,12 @@ class BasicNN(object):
                 y_batch = y[indices]
                 
                 # train
-                self.session.run(
-                    self.train_op
-                    , feed_dict={self.Xs:X_batch, self.ys:y_batch}
+                feed_train = {self.Xs:X_batch, self.ys:y_batch}
+                __, loss_train = self.session.run(
+                    [self.train_op, self.loss]
+                    , feed_dict=feed_train
                 )
-                loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
+                # loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch})
                 self.his_loss_train.append(loss_train)
                 if self.metrics is not None:
                     m = self.get_metrics(X_batch, y_batch)
@@ -255,7 +255,7 @@ class BasicNN(object):
                             if early_metric > earlystop['max_metric']:
                                 earlystop['max_metric'] = early_metric
                                 earlystop['epoch_diff'] = 0
-                                print('*')
+                                print(monitor, 'improved. ')
                             else:
                                 earlystop['epoch_diff'] += 1
                                 print()

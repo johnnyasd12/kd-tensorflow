@@ -144,20 +144,23 @@ class StudentNN(SoftenedNN):
                 
                 # train
                 start_train = time.clock()
-                self.session.run(
-                    self.train_op
-                    , feed_dict={self.Xs:X_batch
+                feed_train = {
+                    self.Xs:X_batch
                     , self.ys:y_batch
                     , self.y_soft:y_soft_batch, self.temperature:temperature
-                    , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss}
-                )
-                t_cost['train_op'] = time.clock()-start_train
+                    , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss
+                    }
 
-                start_loss = time.clock()
-                loss_train = self.session.run(self.loss,feed_dict={self.Xs:X_batch, self.ys:y_batch, self.y_soft:y_soft_batch, self.temperature:temperature
-                        , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss})
-                start_append = time.clock()
-                t_cost['loss_train'] = start_append-start_loss
+                __, loss_train = self.session.run(
+                    [self.train_op, self.loss]
+                    , feed_dict=feed_train
+                )
+                t_cost['train_op + train_loss'] = time.clock()-start_train
+
+                # start_loss = time.clock()
+                # loss_train = self.session.run(self.loss,feed_dict=feed_train)
+                # start_append = time.clock()
+                # t_cost['loss_train'] = start_append-start_loss
                 self.his_loss_train.append(loss_train)
 
                 if self.metrics is not None:
@@ -238,7 +241,7 @@ class StudentNN(SoftenedNN):
                             if early_metric > earlystop['max_metric']:
                                 earlystop['max_metric'] = early_metric
                                 earlystop['epoch_diff'] = 0
-                                print('*')
+                                print(monitor, 'improved. ')
                             else:
                                 earlystop['epoch_diff'] += 1
                                 print()
@@ -249,7 +252,7 @@ class StudentNN(SoftenedNN):
                                 break
 
                     t_cost['whole'] = time.clock()-start_step
-                    t_cost['display_whole'] = time.clock()-start_loss
+                    # t_cost['display_whole'] = time.clock()-start_loss
                     print_obj(t_cost,'t_cost')
 
                 
