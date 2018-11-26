@@ -43,7 +43,7 @@ def plot_mnist(X, y, y_soft=None, n_samples=6, round_show=4, random=False):
         indices = np.random.choice(n_data,n_samples)
     else:
         indices = np.arange(n_samples)
-    
+
     for i in range(n_samples):
         sample = X[[indices[i]]]
         label = y[indices[i]]
@@ -57,6 +57,18 @@ def plot_mnist(X, y, y_soft=None, n_samples=6, round_show=4, random=False):
         print(label_soft)
         # print(np.round(pred,round_show))
         # print(np.round(pred_t,round_show))
+
+def plot_trend(df, label_x, label_y, label_line=None):
+    if label_line is not None:
+        for cond in df[label_line].unique():
+            label_legend = label_line+'='+str(cond)
+            mask = df[label_line] == cond
+            df_plt = df[mask]
+            plt.plot(df_plt[label_x], df_plt[label_y], label=label_legend)
+        plt.xlabel(label_x)
+        plt.ylabel(label_y)
+        plt.legend()
+        plt.show()
 
 def plot_confusion_matrix(y_true, y_pred):
     # This is called from print_test_accuracy() below.
