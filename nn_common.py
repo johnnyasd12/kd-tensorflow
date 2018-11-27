@@ -19,6 +19,7 @@ from abc import ABCMeta, abstractmethod
 # TODO: model.summary
 # TODO: Dropout BUGFIX: keep_prob should be 1 while predicting, use tf.nn.dropout / tf.layers.dropout, https://stackoverflow.com/questions/44971349/how-to-turn-off-dropout-for-testing-in-tensorflow
 # TODO: loss function draw wrong? train&soft_train soft_train still not fixed
+# TODO: soft_train, when coef_softloss much higher than coef_hardloss, then loss_train >> loss_val
 # TODO: start_session in the end of compile_nn ?
 # TODO: history loss, val_loss use dictionary
 
@@ -50,6 +51,7 @@ class BasicNN(object):
         self.W = [] # weights in each layer
         self.b =[] # biases in each layer
         self.h = [self.Xs] # activation output in each layer
+        self.feed_dict_train = {} # feed_dict while training
         self.params = [] # store all Ws and bs
         # self.dropout_keepprob = {} # to be feed_dict while train_op
         self.logits = None # neurons before input to final activation
@@ -85,6 +87,7 @@ class BasicNN(object):
             pre_activation = layer_obj.pre_activation
             activation_fn = layer_obj.activation_fn
             out_activation = layer_obj.out_activation
+            feed_dict_train = layer_obj.feed_train
             # ======================= above use layers ================
 
             self.topology.append(out_dims)
@@ -93,6 +96,7 @@ class BasicNN(object):
             self.W.append(Weights)
             self.b.append(biases)
             self.h.append(out_activation)
+            self.feed_dict_train = {**self.feed_dict_train, **layer_obj.feed_train}
             # if output_layer:
             self.logits = pre_activation
             self.prediction = self.h[-1]
@@ -178,6 +182,8 @@ class BasicNN(object):
                 
                 # train
                 feed_train = {self.Xs:X_batch, self.ys:y_batch}
+                feed_train = {**feed_train, **self.feed_dict_train}
+
                 __, loss_train = self.session.run(
                     [self.train_op, self.loss]
                     , feed_dict=feed_train

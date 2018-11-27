@@ -36,6 +36,11 @@ class MyLayers(metaclass=ABCMeta):
     def out_activation(self):
         return self._out_activation
 
+    @property
+    def feed_train(self):
+        return self._feed_train
+    
+
 
 def weight_fc(shape, stddev=0.1, initial=None, dtype=None):
     if initial is None:
@@ -69,6 +74,7 @@ class FC(MyLayers):
         self._biases = bias_fc(shape_b, dtype=dtype)
         self._pre_activation = tf.add(tf.matmul(inputs, self.weights), self._biases)
         self._activation_fn = activation_fn
+        self._feed_train = {}
 
         if activation_fn is None:
             self._out_activation = self._pre_activation
@@ -82,8 +88,8 @@ class Dropout(MyLayers):
         shape_inputs = inputs.get_shape().as_list()
         assert len(shape_inputs) == 2 # [None, in_dims]
         in_dims = shape_inputs[1]
-        tf_keep_prob = tf.placeholder_with_default(1.0, shape=())
-        outputs = tf.nn.dropout(inputs, keep_prob=tf_keep_prob) # TODO: keep_prob should be placeholder? tf.placeholder(tf.float32)
+        self.tf_keep_prob = tf.placeholder_with_default(1.0, shape=())
+        outputs = tf.nn.dropout(inputs, keep_prob=self.tf_keep_prob) # TODO: keep_prob should be placeholder? tf.placeholder(tf.float32)
 
         self._in_dims = in_dims
         self._out_dims = in_dims # TODO: [None, n_out]?
@@ -92,6 +98,7 @@ class Dropout(MyLayers):
         self._pre_activation = outputs
         self._activation_fn = None
         self._out_activation = outputs
+        self._feed_train = {self.tf_keep_prob: keep_prob}
 
 
 class Conv2d(MyLayers):

@@ -144,12 +144,13 @@ class StudentNN(SoftenedNN):
                 
                 # train
                 start_train = time.clock()
-                feed_train = {
+                feed_dict = {
                     self.Xs:X_batch
                     , self.ys:y_batch
                     , self.y_soft:y_soft_batch, self.temperature:temperature
                     , self.coef_softloss:coef_softloss, self.coef_hardloss:coef_hardloss
                     }
+                feed_train = {**feed_dict, **self.feed_dict_train}
 
                 __, loss_train = self.session.run(
                     [self.train_op, self.loss]
@@ -253,7 +254,7 @@ class StudentNN(SoftenedNN):
 
                     t_cost['whole'] = time.clock()-start_step
                     # t_cost['display_whole'] = time.clock()-start_loss
-                    print_obj(t_cost,'t_cost')
+                    # print_obj(t_cost,'t_cost')
 
                 
                 # gc.collect()
